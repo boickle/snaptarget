@@ -1,0 +1,33 @@
+{
+  "name": "snaptarget",
+  "version": "1.0.0",
+  "description": "Blah",
+  "main": "snapServer.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/boickle/snaptarget.git"
+  },
+  "author": "Brian Oickle",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/boickle/snaptarget/issues"
+  },
+  "homepage": "https://github.com/boickle/snaptarget#readme",
+  "dependencies": {
+    "body-parser": "^1.17.2",
+    "cors": "^2.8.4",
+    "errorhandler": "^1.5.0",
+    "express": "^4.15.3",
+    "extend": "^3.0.1",
+    "jwt-simple": "^0.5.1",
+    "method-override": "^2.3.9",
+    "mongoose": "^4.11.3",
+    "morgan": "^1.8.2",
+    "node-mongoose-validator": "^1.2.0",
+    "routes": "^2.1.0"
+  }
+}
