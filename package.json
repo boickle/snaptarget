@@ -25,6 +25,7 @@
     "extend": "^3.0.1",
     "jwt-simple": "^0.5.1",
     "method-override": "^2.3.9",
+    "moment": "^2.18.1",
     "mongoose": "^4.11.3",
     "morgan": "^1.8.2",
     "node-mongoose-validator": "^1.2.0",

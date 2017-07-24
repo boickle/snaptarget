@@ -7,6 +7,7 @@ const controller = {};
 const cbf = function (cb, err, document) {
 
    if (cb && typeof(cb) === 'function') {
+     console.log('Enter1');
       if (err) cb(err);
       else cb(false, document);
    }
