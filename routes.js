@@ -10,6 +10,8 @@ const targetModel = mongoose.models.Target;
 const offerTargetingController = require('./controllers/offertargeting');
 const offerTargetingModel = mongoose.models.OfferTargeting;
 
+const snapTargeter = require('./controllers/snapTargeter');
+
 const apiToolsController = require('./controllers/apiTools');
 
 
@@ -76,6 +78,10 @@ module.exports.setup = function (app) {
    });
    app.get(baseRoute + '/offertargeting/:id', function (req, res) {
       api.getBy({'_id': req.params['id']}, offerTargetingController, offerTargetingModel, req, res);
+   });
+
+   app.get(baseRoute + '/getoffer', function (req, res) {
+      snapTargeter.getBestOffer(req, res);
    });
 
 

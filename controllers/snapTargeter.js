@@ -1,22 +1,14 @@
 'use strict';
-
-const projectController = require('../controllers/project');
-const projectModel = require('../models/project');
-const forecastController = require('../controllers/forecast');
-const forecastModel = require('../models/forecast');
-const eventController = require('../controllers/event');
-const eventModel = require('../models/event');
-const activityController = require('../controllers/activity');
-const activityModel = require('../models/activity');
-const impactedActivityController = require('../controllers/impactedActivity');
-const impactedActivityModel = require('../models/impactedActivity');
-const statusHandler = require('../statusHandler');
-const baseController = require('./_base.js');
-const moment = require('moment');
 const extend = require('extend');
-const _ = require('lodash');
-
 const controller = {};
+const baseController = require('./_base.js');
+const statusHandler = require('../statusHandler');
+const mongoose = require('mongoose');
+
+const GENDER = 'gender';
+const LOCATION = 'location';
+const AGE = 'age';
+const KEYWORD = 'keyword';
 
 extend(controller, baseController);
 
@@ -25,35 +17,176 @@ module.exports = controller;
 
 
 controller.getBestOffer = function (req, res) {
+  const targetModel = mongoose.models.Target;
+  const offerModel = mongoose.models.Offer;
+  const offerTargetModel = mongoose.models.OfferTargeting;
 
-   let gender = req.params.gender;
-   let latitude = req.params.latitude;
-   let latitude = req.params.longitude;
-   let age = req.params.age;
-   let keywords = req.params.keywords;
+   let gender = req.query.gender;
+   let age = req.query.age;
+   let keywords = req.query.keywords;
+   let location = req.query.location;
+   let err = null;
 
-   let query = {project: projectId, type: type};
+   let genderQuery = {targetName: GENDER, targetValue: gender};
+   let ageQuery = {targetName: AGE, targetValuetargetValue: {$eq: age}};
 
-   Model
-      .find(query)
-      .sort({'createdAt': -1})
-      .populate('project user forecast events impactedActivities', '-password -secret')
-      .deepPopulate('project.group impactedActivities.activity')
-      .limit(batchSize)
-      .skip(skip)
-      .exec(function (err, documents) {
-         // we want outlook reports to be sorted by startDate (earliest first)
-         // other reports are only sorted by createdAt
-         if (parseInt(type) === 2) {
-            //console.log('sorting');
-            documents.sort(function (a, b) {
-               return a.startDate > b.startDate;
-            });
-         }
-         //console.log('documents <' + documents + '> err <' + err + '>');
-         statusHandler(err, res, documents);
+   let offers = [];
+   handleGender(gender, [], function(err, genderOffers){
+      if(gender){
+        offers = genderOffers;
+      }
+      handleAge(age, offers, function(err, ageOffers){
+        if(age){
+          offers=ageOffers;
+        }
+          handleKeywords(age, offers, function(err, keywordOffers){
+          if(keywords){
+            offers=keywordOffers;
+          }
+
+          getOffers(offers, function(err, documents){
+            statusHandler(err, res, documents);
+          });
+        });
       });
+    });
+
 };
+
+function handleGender(gender, includeOffers, cb){
+  if(!gender){
+    return cb(err, includeOffers);
+  }
+
+  const offerTargetModel = mongoose.models.OfferTargeting;
+  let query = '{markedAsDeleted: false}';
+  if(includeOffers.length!=0){
+    query={'offer': { $in: includeOffers}, markedAsDeleted: false};
+  }
+  offerTargetModel
+     .find(query)
+     .populate({
+       path: `target`,
+       match: {
+         targetName: {$eq: GENDER}, targetValue: {$eq: gender}}
+     })
+     .exec(function (err, documents) {
+        var offers = [];
+        if(err) { return cb(err, []); }
+
+        documents.forEach(function(document) {
+          if(document.target){
+            offers.push(document.offer);
+          }
+
+        });
+        if(offers.length==0){
+          offers = includeOffers;  //no age targeting available for these offers.
+        }
+
+        return cb(err, offers);
+     });
+}
+
+function handleAge(age, includeOffers, cb){
+  if(!age){
+    return cb(err, includeOffers);
+  }
+  let query = '{markedAsDeleted: false}';
+  if(includeOffers.length!=0){
+    query={'offer': { $in: includeOffers}, markedAsDeleted: false};
+  }
+  const offerTargetModel = mongoose.models.OfferTargeting;
+  console.log(includeOffers);
+  offerTargetModel
+     .find(query)
+     .populate({
+       path: `target`,
+       match: {targetName: {$eq: AGE}}
+     })
+     .exec(function (err, documents) {
+        var offers = [];
+
+        documents.forEach(function(document) {
+          if(document.target){
+            if(checkAgeLogic(age, document)){
+              offers.push(document.offer);
+            }
+          }
+        });
+
+        if(offers.length==0){
+          offers = includeOffers;  //no age targeting available for these offers.
+        }
+        return cb(err, offers);
+     });
+}
+
+function handleKeywords(keywords, includeOffers, cb){
+  if(!keywords){
+    return cb(err, includeOffers);
+  }
+  let query = '{markedAsDeleted: false}';
+  if(includeOffers.length!=0){
+    query={'offer': { $in: includeOffers}, markedAsDeleted: false};
+  }
+  const offerTargetModel = mongoose.models.OfferTargeting;
+  console.log(includeOffers);
+  offerTargetModel
+     .find(query)
+     .populate({
+       path: `target`,
+       match: {targetName: {$eq: KEYWORD}, targetValue: {$in: keywords}}
+     })
+     .exec(function (err, documents) {
+        var offers = [];
+
+        documents.forEach(function(document) {
+          if(document.target){
+              offers.push(document.offer);
+          }
+        });
+
+        if(offers.length==0){
+          offers = includeOffers;  //no age targeting available for these offers.
+        }
+        return cb(err, offers);
+     });
+}
+
+function getOffers(offers, cb){
+  const offerModel = mongoose.models.Offer;
+  offerModel
+     .find({'_id': { $in: offers}})
+     .exec(function (err, documents) {
+       return cb(err, documents);
+     });
+}
+
+function checkAgeLogic(age, ageTarget){
+  const GREATER_THAN = 'greater than';
+  const LESS_THAN = 'less than';
+  const EQUAL = 'equal';
+
+  if(ageTarget.target.targetType.toString() === GREATER_THAN){
+    console.log(age);
+    console.log(ageTarget);
+    if(age > ageTarget.target.targetValue){
+      return true;
+    }
+  } else if (ageTarget.target.targetType === LESS_THAN){
+    if(age < ageTarget.target.targetValue) {
+      return true;
+    }
+  } else if (ageTarget.traget.targetType == EQUAL){
+    if(age == ageTarget.target.targetValue) {
+      return true;
+    }
+  } else {
+    return false;
+  }
+
+}
 
 
 module.exports = controller;

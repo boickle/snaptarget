@@ -18,6 +18,9 @@ const fields = {
       required: 'required',
       type: String
    },
+   targetType: {
+      type: String
+   },
    markedAsDeleted: {
       type: Boolean,
       default: false
